@@ -1,0 +1,1166 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="theme-color" content="#0a0c14">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="KharchaBook">
+<title>KharchaBook 📒</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<style>
+:root {
+  --bg: #0a0c14;
+  --card: #131620;
+  --card2: #1c2030;
+  --border: #252a3d;
+  --income: #00e676;
+  --income-dim: #00e67618;
+  --expense: #ff4d6d;
+  --expense-dim: #ff4d6d18;
+  --text: #eef0ff;
+  --muted: #5a6080;
+  --accent: #7c6bff;
+  --gold: #f59e0b;
+  --radius: 16px;
+}
+* { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+html,body { height:100%; }
+body {
+  background:var(--bg);
+  color:var(--text);
+  font-family: -apple-system, 'Segoe UI', sans-serif;
+  max-width:440px;
+  margin:0 auto;
+  min-height:100vh;
+  padding-bottom:80px;
+  overflow-x:hidden;
+}
+
+/* ─── HEADER ─── */
+.hdr {
+  position:sticky; top:0; z-index:50;
+  background:rgba(10,12,20,0.92);
+  backdrop-filter:blur(20px);
+  border-bottom:1px solid var(--border);
+  padding:14px 16px 10px;
+}
+.hdr-row { display:flex; align-items:center; justify-content:space-between; }
+.logo { font-size:20px; font-weight:800; letter-spacing:-0.5px; }
+.logo span { color:var(--accent); }
+.hdr-actions { display:flex; gap:7px; }
+.hbtn {
+  border:1px solid var(--border);
+  background:var(--card2);
+  color:var(--text);
+  font-size:11px; font-weight:600;
+  padding:6px 10px; border-radius:20px;
+  cursor:pointer; transition:all .2s;
+  display:flex; align-items:center; gap:4px;
+  font-family:inherit;
+}
+.hbtn:hover { border-color:var(--accent); color:var(--accent); }
+.hbtn.gold { border-color:var(--gold); color:var(--gold); }
+.hbtn.gold:hover { background:var(--gold); color:#000; }
+.hbtn.green { border-color:var(--income); color:var(--income); }
+.hbtn.green:hover { background:var(--income); color:#003d1a; }
+
+/* ─── TABS ─── */
+.tabs {
+  display:flex;
+  border-bottom:1px solid var(--border);
+  padding:0 16px;
+  gap:4px;
+  margin-top:8px;
+}
+.tab {
+  flex:1; text-align:center;
+  padding:8px 4px;
+  font-size:12px; font-weight:600;
+  color:var(--muted);
+  cursor:pointer;
+  border-bottom:2px solid transparent;
+  transition:all .2s;
+  letter-spacing:.3px;
+}
+.tab.active { color:var(--accent); border-color:var(--accent); }
+
+/* ─── PAGES ─── */
+.page { display:none; }
+.page.active { display:block; }
+
+/* ─── BALANCE CARD ─── */
+.bal-card {
+  margin:14px 16px;
+  background:var(--card2);
+  border:1px solid var(--border);
+  border-radius:20px;
+  padding:18px;
+  position:relative; overflow:hidden;
+}
+.bal-card::before {
+  content:'';
+  position:absolute; top:-50px; right:-50px;
+  width:160px; height:160px;
+  background:radial-gradient(circle,#7c6bff22,transparent 70%);
+  border-radius:50%;
+  pointer-events:none;
+}
+.bal-label { font-size:11px; color:var(--muted); text-transform:uppercase; letter-spacing:1.5px; font-weight:600; margin-bottom:5px; }
+.bal-amount { font-size:32px; font-weight:800; line-height:1.1; word-break:break-all; transition:color .3s; }
+.bal-amount.pos { color:var(--income); }
+.bal-amount.neg { color:var(--expense); }
+.bal-amount.zero { color:var(--text); }
+.bal-row {
+  display:flex; gap:12px;
+  margin-top:14px; padding-top:14px;
+  border-top:1px solid var(--border);
+}
+.bal-sub { flex:1; }
+.bal-sub-lbl { font-size:10px; color:var(--muted); text-transform:uppercase; letter-spacing:1px; margin-bottom:3px; }
+.bal-sub-val { font-size:15px; font-weight:700; word-break:break-all; }
+.bal-sub-val.inc { color:var(--income); }
+.bal-sub-val.exp { color:var(--expense); }
+
+/* ─── ACTION BUTTONS ─── */
+.act-row { display:grid; grid-template-columns:1fr 1fr; gap:10px; padding:0 16px; margin-bottom:20px; }
+.act-btn {
+  border:none; border-radius:var(--radius);
+  padding:16px 12px; cursor:pointer;
+  display:flex; flex-direction:column; align-items:center; gap:5px;
+  font-family:inherit; font-weight:700;
+  transition:transform .15s, box-shadow .15s;
+}
+.act-btn:active { transform:scale(0.96); }
+.act-btn .icon { font-size:24px; }
+.act-btn .lbl { font-size:14px; }
+.btn-inc { background:linear-gradient(135deg,#00c853,#00e676); color:#003d1a; box-shadow:0 6px 20px #00e67630; }
+.btn-exp { background:linear-gradient(135deg,#e53935,#ff4d6d); color:#fff; box-shadow:0 6px 20px #ff4d6d30; }
+
+/* ─── SECTION TITLE ─── */
+.sec-title {
+  font-size:11px; font-weight:700; color:var(--muted);
+  text-transform:uppercase; letter-spacing:1.5px;
+  padding:0 16px; margin-bottom:10px;
+}
+
+/* ─── TX LIST ─── */
+.tx-list { padding:0 16px; display:flex; flex-direction:column; gap:8px; }
+.tx-item {
+  background:var(--card);
+  border:1px solid var(--border);
+  border-radius:14px;
+  padding:12px 14px;
+  display:flex; align-items:center; gap:12px;
+  animation:slideIn .2s ease;
+}
+@keyframes slideIn { from{opacity:0;transform:translateY(-8px)} to{opacity:1;transform:translateY(0)} }
+.tx-ico {
+  width:40px; height:40px; border-radius:12px;
+  display:flex; align-items:center; justify-content:center;
+  font-size:18px; flex-shrink:0;
+}
+.tx-ico.income { background:var(--income-dim); }
+.tx-ico.expense { background:var(--expense-dim); }
+.tx-inf { flex:1; min-width:0; }
+.tx-desc { font-size:13px; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.tx-meta { font-size:10px; color:var(--muted); margin-top:2px; }
+.tx-right { display:flex; flex-direction:column; align-items:flex-end; gap:4px; flex-shrink:0; }
+.tx-amt { font-size:14px; font-weight:700; }
+.tx-amt.income { color:var(--income); }
+.tx-amt.expense { color:var(--expense); }
+.tx-thumb {
+  width:32px; height:32px; border-radius:6px;
+  object-fit:cover; border:1px solid var(--border);
+  cursor:pointer; flex-shrink:0;
+}
+.tx-del {
+  background:none; border:none; color:var(--border);
+  font-size:14px; cursor:pointer; padding:3px;
+  border-radius:5px; transition:color .2s; flex-shrink:0;
+}
+.tx-del:hover { color:var(--expense); }
+
+.empty {
+  text-align:center; padding:40px 20px; color:var(--muted);
+}
+.empty .eico { font-size:44px; margin-bottom:10px; }
+.empty p { font-size:13px; line-height:1.7; }
+
+/* ─── MODAL ─── */
+.overlay {
+  position:fixed; inset:0;
+  background:#000a; z-index:100;
+  display:flex; align-items:flex-end;
+  opacity:0; pointer-events:none;
+  transition:opacity .25s;
+  backdrop-filter:blur(6px);
+}
+.overlay.open { opacity:1; pointer-events:all; }
+.modal {
+  background:var(--card);
+  border:1px solid var(--border);
+  border-radius:24px 24px 0 0;
+  padding:20px 20px 36px;
+  width:100%;
+  max-height:90vh;
+  overflow-y:auto;
+  transform:translateY(100%);
+  transition:transform .3s cubic-bezier(.34,1.56,.64,1);
+}
+.overlay.open .modal { transform:translateY(0); }
+.modal-handle { width:36px; height:4px; background:var(--border); border-radius:2px; margin:0 auto 16px; }
+.modal-title { font-size:18px; font-weight:800; margin-bottom:18px; display:flex; align-items:center; gap:8px; }
+.modal-title.income { color:var(--income); }
+.modal-title.expense { color:var(--expense); }
+
+/* ─── FORM ─── */
+.fg { margin-bottom:14px; }
+.fl { font-size:11px; color:var(--muted); text-transform:uppercase; letter-spacing:1px; font-weight:600; margin-bottom:7px; display:block; }
+.fi, .fs {
+  width:100%; background:var(--card2);
+  border:1.5px solid var(--border);
+  border-radius:12px; padding:13px 14px;
+  color:var(--text); font-size:16px; font-family:inherit;
+  outline:none; transition:border-color .2s;
+  -webkit-appearance:none;
+}
+.fi:focus { border-color:var(--accent); }
+.fi.ifoc:focus { border-color:var(--income); }
+.fi.efoc:focus { border-color:var(--expense); }
+.fi::placeholder { color:var(--muted); }
+.fs {
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%235a6080' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
+  background-repeat:no-repeat; background-position:right 14px center;
+  padding-right:36px; cursor:pointer;
+}
+.qa { display:flex; gap:7px; flex-wrap:wrap; margin-top:7px; }
+.qa span {
+  background:var(--card2); border:1px solid var(--border);
+  border-radius:8px; padding:5px 11px;
+  font-size:12px; color:var(--muted);
+  cursor:pointer; transition:all .2s; font-family:inherit;
+}
+.qa span:hover { border-color:var(--accent); color:var(--text); }
+
+/* ─── PHOTO UPLOAD ─── */
+.photo-upload-area {
+  border:2px dashed var(--border);
+  border-radius:12px; padding:16px;
+  text-align:center; cursor:pointer;
+  transition:border-color .2s;
+  position:relative;
+}
+.photo-upload-area:hover { border-color:var(--accent); }
+.photo-upload-area input { position:absolute; inset:0; opacity:0; cursor:pointer; width:100%; height:100%; }
+.photo-upload-area .pu-text { font-size:12px; color:var(--muted); }
+.photo-upload-area .pu-icon { font-size:24px; margin-bottom:5px; }
+.photo-preview {
+  margin-top:10px;
+  display:flex; gap:8px; flex-wrap:wrap;
+}
+.photo-preview img {
+  width:60px; height:60px; border-radius:8px;
+  object-fit:cover; border:1px solid var(--border);
+}
+.preview-wrap { position:relative; }
+.preview-wrap .rm-photo {
+  position:absolute; top:-4px; right:-4px;
+  background:var(--expense); color:#fff;
+  border:none; border-radius:50%;
+  width:16px; height:16px; font-size:10px;
+  cursor:pointer; display:flex; align-items:center; justify-content:center;
+  line-height:1;
+}
+
+.sub-btn {
+  width:100%; border:none; border-radius:14px;
+  padding:15px; font-family:inherit;
+  font-size:17px; font-weight:700;
+  cursor:pointer; margin-top:18px;
+  transition:transform .15s;
+}
+.sub-btn:active { transform:scale(0.97); }
+.sub-btn.inc-sub { background:linear-gradient(135deg,#00c853,#00e676); color:#003d1a; box-shadow:0 6px 20px #00e67630; }
+.sub-btn.exp-sub { background:linear-gradient(135deg,#e53935,#ff4d6d); color:#fff; box-shadow:0 6px 20px #ff4d6d30; }
+
+/* ─── CHART PAGE ─── */
+.chart-wrap { padding:16px; }
+.chart-title { font-size:14px; font-weight:700; color:var(--muted); text-transform:uppercase; letter-spacing:1px; margin-bottom:14px; }
+.chart-box {
+  background:var(--card2); border:1px solid var(--border);
+  border-radius:var(--radius); padding:16px;
+  margin-bottom:14px;
+}
+canvas { width:100% !important; display:block; }
+.chart-legend { display:flex; gap:16px; margin-top:10px; flex-wrap:wrap; }
+.legend-item { display:flex; align-items:center; gap:6px; font-size:11px; color:var(--muted); }
+.legend-dot { width:10px; height:10px; border-radius:50%; flex-shrink:0; }
+
+/* ─── BACKUP PAGE ─── */
+.backup-wrap { padding:16px; display:flex; flex-direction:column; gap:12px; }
+.backup-card {
+  background:var(--card2); border:1px solid var(--border);
+  border-radius:var(--radius); padding:18px;
+}
+.backup-card h3 { font-size:15px; font-weight:700; margin-bottom:6px; display:flex; align-items:center; gap:8px; }
+.backup-card p { font-size:12px; color:var(--muted); line-height:1.7; margin-bottom:14px; }
+.backup-btn {
+  width:100%; border:none; border-radius:12px;
+  padding:13px; font-family:inherit;
+  font-size:14px; font-weight:700;
+  cursor:pointer; transition:all .2s;
+  display:flex; align-items:center; justify-content:center; gap:8px;
+}
+.backup-btn.dl { background:var(--income); color:#003d1a; }
+.backup-btn.ul { background:var(--accent); color:#fff; }
+.backup-btn.danger { background:var(--expense); color:#fff; }
+.backup-btn:hover { opacity:.9; }
+.db-stats {
+  display:grid; grid-template-columns:1fr 1fr;
+  gap:10px; margin-bottom:14px;
+}
+.db-stat {
+  background:var(--card); border:1px solid var(--border);
+  border-radius:12px; padding:12px; text-align:center;
+}
+.db-stat-val { font-size:20px; font-weight:800; color:var(--accent); }
+.db-stat-lbl { font-size:10px; color:var(--muted); margin-top:3px; text-transform:uppercase; letter-spacing:.8px; }
+#restore-file-input { display:none; }
+
+/* ─── IMAGE MODAL ─── */
+.img-modal-overlay {
+  position:fixed; inset:0; background:#000c; z-index:200;
+  display:flex; align-items:center; justify-content:center;
+  opacity:0; pointer-events:none; transition:opacity .2s;
+}
+.img-modal-overlay.open { opacity:1; pointer-events:all; }
+.img-modal-overlay img {
+  max-width:90vw; max-height:85vh;
+  border-radius:12px; border:2px solid var(--border);
+}
+.img-close {
+  position:absolute; top:20px; right:20px;
+  background:var(--card2); border:1px solid var(--border);
+  color:var(--text); width:36px; height:36px;
+  border-radius:50%; font-size:18px; cursor:pointer;
+  display:flex; align-items:center; justify-content:center;
+}
+
+/* ─── TOAST ─── */
+.toast {
+  position:fixed; top:16px; left:50%;
+  transform:translateX(-50%) translateY(-80px);
+  background:var(--card2); border:1px solid var(--border);
+  border-radius:30px; padding:11px 22px;
+  font-size:13px; font-weight:600; z-index:300;
+  transition:transform .3s cubic-bezier(.34,1.56,.64,1);
+  white-space:nowrap; box-shadow:0 8px 28px #0009;
+  pointer-events:none;
+}
+.toast.show { transform:translateX(-50%) translateY(0); }
+.toast.t-inc { color:var(--income); border-color:var(--income); }
+.toast.t-exp { color:var(--expense); border-color:var(--expense); }
+.toast.t-acc { color:var(--accent); border-color:var(--accent); }
+.toast.t-gld { color:var(--gold); border-color:var(--gold); }
+</style>
+</head>
+<body>
+
+<div class="toast" id="toast"></div>
+
+<!-- Image Viewer Modal -->
+<div class="img-modal-overlay" id="imgViewer" onclick="closeImgViewer()">
+  <button class="img-close">✕</button>
+  <img id="imgViewerSrc" src="" alt="bill">
+</div>
+
+<!-- HEADER -->
+<div class="hdr">
+  <div class="hdr-row">
+    <div class="logo">Kharcha<span>Book</span> 📒</div>
+    <div class="hdr-actions">
+      <button class="hbtn gold" onclick="exportPDF()">📄 PDF</button>
+      <button class="hbtn green" onclick="switchTab('backup')">💾 Backup</button>
+    </div>
+  </div>
+  <div class="tabs">
+    <div class="tab active" id="tab-home" onclick="switchTab('home')">🏠 Home</div>
+    <div class="tab" id="tab-chart" onclick="switchTab('chart')">📊 Chart</div>
+    <div class="tab" id="tab-backup" onclick="switchTab('backup')">🔒 Backup</div>
+  </div>
+</div>
+
+<!-- HOME PAGE -->
+<div class="page active" id="page-home">
+  <div class="bal-card">
+    <div class="bal-label">Baaki Paisa</div>
+    <div class="bal-amount zero" id="balance">₹0</div>
+    <div class="bal-row">
+      <div class="bal-sub">
+        <div class="bal-sub-lbl">💚 Aaya</div>
+        <div class="bal-sub-val inc" id="total-inc">₹0</div>
+      </div>
+      <div class="bal-sub">
+        <div class="bal-sub-lbl">❤️ Gaya</div>
+        <div class="bal-sub-val exp" id="total-exp">₹0</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="act-row">
+    <button class="act-btn btn-inc" onclick="openModal('income')">
+      <span class="icon">💰</span><span class="lbl">Income Aaya</span>
+    </button>
+    <button class="act-btn btn-exp" onclick="openModal('expense')">
+      <span class="icon">🛒</span><span class="lbl">Kharcha Hua</span>
+    </button>
+  </div>
+
+  <div class="sec-title">Recent Transactions</div>
+  <div class="tx-list" id="tx-list">
+    <div class="empty"><div class="eico">📭</div><p>Koi transaction nahi abhi.<br>Income ya kharcha add karo!</p></div>
+  </div>
+</div>
+
+<!-- CHART PAGE -->
+<div class="page" id="page-chart">
+  <div class="chart-wrap">
+    <div class="chart-title">Monthly Overview</div>
+    <div class="chart-box">
+      <canvas id="monthChart" height="220"></canvas>
+      <div class="chart-legend">
+        <div class="legend-item"><div class="legend-dot" style="background:#00e676"></div>Income</div>
+        <div class="legend-item"><div class="legend-dot" style="background:#ff4d6d"></div>Kharcha</div>
+        <div class="legend-item"><div class="legend-dot" style="background:#7c6bff"></div>Baaki</div>
+      </div>
+    </div>
+    <div class="chart-title">Category-wise Kharcha</div>
+    <div class="chart-box">
+      <canvas id="catChart" height="200"></canvas>
+    </div>
+  </div>
+</div>
+
+<!-- BACKUP PAGE -->
+<div class="page" id="page-backup">
+  <div class="backup-wrap">
+    <div class="backup-card">
+      <div class="db-stats">
+        <div class="db-stat">
+          <div class="db-stat-val" id="stat-tx">0</div>
+          <div class="db-stat-lbl">Transactions</div>
+        </div>
+        <div class="db-stat">
+          <div class="db-stat-val" id="stat-photos">0</div>
+          <div class="db-stat-lbl">Photos</div>
+        </div>
+      </div>
+      <h3>💾 Data Kahan Hai?</h3>
+      <p>Tera data <strong>sirf is device ke browser (IndexedDB)</strong> mein save hai. Koi server nahi, koi cloud nahi. Cache clear karne se bhi <strong>IndexedDB data safe rehta hai</strong> normally. Extra safety ke liye neeche se backup le lo.</p>
+    </div>
+
+    <div class="backup-card">
+      <h3>📥 Backup Download Karo</h3>
+      <p>Sab transactions + photos ek <strong>.json file</strong> mein download honge. Apne Downloads folder ya Google Drive mein save karo.</p>
+      <button class="backup-btn dl" onclick="downloadBackup()">📥 Backup Download Karo (.json)</button>
+    </div>
+
+    <div class="backup-card">
+      <h3>📤 Backup Restore Karo</h3>
+      <p>Pehle download ki hui .json backup file select karo. Data wapas aa jaayega.</p>
+      <button class="backup-btn ul" onclick="document.getElementById('restore-file-input').click()">📤 Backup File Select Karo</button>
+      <input type="file" id="restore-file-input" accept=".json" onchange="restoreBackup(event)">
+    </div>
+
+    <div class="backup-card">
+      <h3 style="color:var(--expense)">⚠️ Sab Delete Karo</h3>
+      <p>Saare transactions aur photos permanently delete ho jaayenge. Pehle backup zaroor le lo!</p>
+      <button class="backup-btn danger" onclick="clearAll()">🗑️ Sab Kuch Delete Karo</button>
+    </div>
+  </div>
+</div>
+
+<!-- INCOME MODAL -->
+<div class="overlay" id="income-overlay" onclick="closeOnOverlay(event,'income')">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-title income">💰 Income Add Karo</div>
+    <div class="fg">
+      <label class="fl">Kitna Paisa Aaya? (₹)</label>
+      <input class="fi ifoc" type="number" id="inc-amt" placeholder="e.g. 25000" inputmode="numeric">
+      <div class="qa">
+        <span onclick="sa('inc-amt',1000)">₹1,000</span>
+        <span onclick="sa('inc-amt',5000)">₹5,000</span>
+        <span onclick="sa('inc-amt',10000)">₹10,000</span>
+        <span onclick="sa('inc-amt',25000)">₹25,000</span>
+      </div>
+    </div>
+    <div class="fg">
+      <label class="fl">Kahan Se Aaya?</label>
+      <select class="fs" id="inc-cat">
+        <option value="💼 Salary">💼 Salary</option>
+        <option value="🏠 Rent Aaya">🏠 Rent Aaya</option>
+        <option value="🎁 Gift">🎁 Gift</option>
+        <option value="💹 Investment">💹 Investment Return</option>
+        <option value="🔧 Freelance">🔧 Freelance</option>
+        <option value="📦 Other">📦 Other</option>
+      </select>
+    </div>
+    <div class="fg">
+      <label class="fl">Note (Optional)</label>
+      <input class="fi ifoc" type="text" id="inc-note" placeholder="e.g. January ki salary">
+    </div>
+    <div class="fg">
+      <label class="fl">📸 Receipt / Photo (Optional)</label>
+      <div class="photo-upload-area" id="inc-upload-area">
+        <input type="file" id="inc-photo" accept="image/*" onchange="handlePhoto('inc',event)">
+        <div class="pu-icon">📷</div>
+        <div class="pu-text">Photo ya bill tap karke add karo</div>
+      </div>
+      <div class="photo-preview" id="inc-preview"></div>
+    </div>
+    <button class="sub-btn inc-sub" onclick="addTx('income')">✅ Income Add Karo</button>
+  </div>
+</div>
+
+<!-- EXPENSE MODAL -->
+<div class="overlay" id="expense-overlay" onclick="closeOnOverlay(event,'expense')">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-title expense">🛒 Kharcha Add Karo</div>
+    <div class="fg">
+      <label class="fl">Kitna Kharcha Hua? (₹)</label>
+      <input class="fi efoc" type="number" id="exp-amt" placeholder="e.g. 500" inputmode="numeric">
+      <div class="qa">
+        <span onclick="sa('exp-amt',50)">₹50</span>
+        <span onclick="sa('exp-amt',100)">₹100</span>
+        <span onclick="sa('exp-amt',500)">₹500</span>
+        <span onclick="sa('exp-amt',1000)">₹1,000</span>
+      </div>
+    </div>
+    <div class="fg">
+      <label class="fl">Kahan Gaya Paisa?</label>
+      <select class="fs" id="exp-cat">
+        <option value="🛒 Kirana">🛒 Kirana / Grocery</option>
+        <option value="🏠 Ghar">🏠 Ghar / Rent</option>
+        <option value="🍽️ Khana">🍽️ Khana / Restaurant</option>
+        <option value="🚗 Safar">🚗 Safar / Travel</option>
+        <option value="💊 Dawai">💊 Dawai / Medical</option>
+        <option value="👕 Kapde">👕 Kapde / Shopping</option>
+        <option value="📱 Recharge">📱 Recharge / Bills</option>
+        <option value="🎓 Padhai">🎓 Padhai / Education</option>
+        <option value="📦 Other">📦 Aur Kuch</option>
+      </select>
+    </div>
+    <div class="fg">
+      <label class="fl">Kya Liya / Kahan Gaye?</label>
+      <input class="fi efoc" type="text" id="exp-note" placeholder="e.g. Doodh, sabzi, atta liya">
+    </div>
+    <div class="fg">
+      <label class="fl">📸 Bill / Receipt Photo (Optional)</label>
+      <div class="photo-upload-area" id="exp-upload-area">
+        <input type="file" id="exp-photo" accept="image/*" onchange="handlePhoto('exp',event)">
+        <div class="pu-icon">📷</div>
+        <div class="pu-text">Bill ya receipt ki photo add karo</div>
+      </div>
+      <div class="photo-preview" id="exp-preview"></div>
+    </div>
+    <button class="sub-btn exp-sub" onclick="addTx('expense')">✅ Kharcha Add Karo</button>
+  </div>
+</div>
+
+<script>
+// ─── IndexedDB Setup ───
+const DB_NAME = 'KharchaBookDB', DB_VER = 1, STORE = 'transactions';
+let db = null;
+let pendingPhoto = { inc: null, exp: null };
+
+function openDB() {
+  return new Promise((res, rej) => {
+    const req = indexedDB.open(DB_NAME, DB_VER);
+    req.onupgradeneeded = e => {
+      const d = e.target.result;
+      if (!d.objectStoreNames.contains(STORE)) {
+        d.createObjectStore(STORE, { keyPath: 'id' });
+      }
+    };
+    req.onsuccess = e => { db = e.target.result; res(db); };
+    req.onerror = () => rej(req.error);
+  });
+}
+
+function dbGetAll() {
+  return new Promise((res, rej) => {
+    const tx = db.transaction(STORE, 'readonly');
+    const req = tx.objectStore(STORE).getAll();
+    req.onsuccess = () => res(req.result || []);
+    req.onerror = () => rej(req.error);
+  });
+}
+
+function dbPut(item) {
+  return new Promise((res, rej) => {
+    const tx = db.transaction(STORE, 'readwrite');
+    const req = tx.objectStore(STORE).put(item);
+    req.onsuccess = () => res();
+    req.onerror = () => rej(req.error);
+  });
+}
+
+function dbDelete(id) {
+  return new Promise((res, rej) => {
+    const tx = db.transaction(STORE, 'readwrite');
+    const req = tx.objectStore(STORE).delete(id);
+    req.onsuccess = () => res();
+    req.onerror = () => rej(req.error);
+  });
+}
+
+function dbClear() {
+  return new Promise((res, rej) => {
+    const tx = db.transaction(STORE, 'readwrite');
+    const req = tx.objectStore(STORE).clear();
+    req.onsuccess = () => res();
+    req.onerror = () => rej(req.error);
+  });
+}
+
+// ─── State ───
+let transactions = [];
+
+async function loadAll() {
+  transactions = await dbGetAll();
+  transactions.sort((a, b) => new Date(a.date) - new Date(b.date));
+  updateUI();
+  updateStats();
+}
+
+// ─── Format ───
+function fmt(n) {
+  return '₹' + Number(n).toLocaleString('en-IN', { maximumFractionDigits: 0 });
+}
+
+// ─── UI Update ───
+function updateUI() {
+  const inc = transactions.filter(t => t.type === 'income').reduce((s, t) => s + t.amount, 0);
+  const exp = transactions.filter(t => t.type === 'expense').reduce((s, t) => s + t.amount, 0);
+  const bal = inc - exp;
+
+  document.getElementById('total-inc').textContent = fmt(inc);
+  document.getElementById('total-exp').textContent = fmt(exp);
+
+  const el = document.getElementById('balance');
+  if (bal > 0) { el.className = 'bal-amount pos'; el.textContent = fmt(bal); }
+  else if (bal < 0) { el.className = 'bal-amount neg'; el.textContent = '-' + fmt(Math.abs(bal)); }
+  else { el.className = 'bal-amount zero'; el.textContent = '₹0'; }
+
+  renderList();
+}
+
+function renderList() {
+  const list = document.getElementById('tx-list');
+  if (!transactions.length) {
+    list.innerHTML = `<div class="empty"><div class="eico">📭</div><p>Koi transaction nahi abhi.<br>Income ya kharcha add karo!</p></div>`;
+    return;
+  }
+  list.innerHTML = [...transactions].reverse().map(t => {
+    const emoji = t.category.split(' ')[0];
+    const d = new Date(t.date);
+    const ds = d.toLocaleDateString('en-IN', { day: '2-digit', month: 'short' }) + ' ' + d.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' });
+    const prefix = t.type === 'income' ? '+' : '-';
+    const thumbHtml = t.photo ? `<img class="tx-thumb" src="${t.photo}" alt="bill" onclick="viewImg('${t.id}')">` : '';
+    return `<div class="tx-item">
+      <div class="tx-ico ${t.type}">${emoji}</div>
+      <div class="tx-inf">
+        <div class="tx-desc">${t.note || t.category.replace(/[^\w\s]/gi,'').trim()}</div>
+        <div class="tx-meta">${t.category} &bull; ${ds}</div>
+      </div>
+      <div class="tx-right">
+        <div class="tx-amt ${t.type}">${prefix}${fmt(t.amount)}</div>
+        ${thumbHtml}
+      </div>
+      <button class="tx-del" onclick="deleteTx('${t.id}')">✕</button>
+    </div>`;
+  }).join('');
+}
+
+function updateStats() {
+  const photos = transactions.filter(t => t.photo).length;
+  document.getElementById('stat-tx').textContent = transactions.length;
+  document.getElementById('stat-photos').textContent = photos;
+}
+
+// ─── Photo Handling ───
+function handlePhoto(prefix, event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    // Compress image using canvas
+    const img = new Image();
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+      const MAX = 800;
+      let w = img.width, h = img.height;
+      if (w > h && w > MAX) { h = h * MAX / w; w = MAX; }
+      else if (h > MAX) { w = w * MAX / h; h = MAX; }
+      canvas.width = w; canvas.height = h;
+      canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+      const compressed = canvas.toDataURL('image/jpeg', 0.7);
+      pendingPhoto[prefix] = compressed;
+      showPhotoPreview(prefix, compressed);
+    };
+    img.src = e.target.result;
+  };
+  reader.readAsDataURL(file);
+}
+
+function showPhotoPreview(prefix, src) {
+  const wrap = document.getElementById(prefix + '-preview');
+  wrap.innerHTML = `<div class="preview-wrap">
+    <img src="${src}" alt="preview">
+    <button class="rm-photo" onclick="removePhoto('${prefix}')">✕</button>
+  </div>`;
+  document.getElementById(prefix + '-upload-area').querySelector('.pu-text').textContent = '✅ Photo ready hai!';
+}
+
+function removePhoto(prefix) {
+  pendingPhoto[prefix] = null;
+  document.getElementById(prefix + '-preview').innerHTML = '';
+  document.getElementById(prefix + '-upload-area').querySelector('.pu-text').textContent = 'Photo ya bill tap karke add karo';
+}
+
+// ─── Image Viewer ───
+function viewImg(id) {
+  const t = transactions.find(x => x.id === id);
+  if (!t || !t.photo) return;
+  document.getElementById('imgViewerSrc').src = t.photo;
+  document.getElementById('imgViewer').classList.add('open');
+}
+function closeImgViewer() {
+  document.getElementById('imgViewer').classList.remove('open');
+}
+
+// ─── Modal ───
+function openModal(type) {
+  const prefix = type === 'income' ? 'inc' : 'exp';
+  pendingPhoto[prefix] = null;
+  document.getElementById(prefix + '-preview').innerHTML = '';
+  document.getElementById(prefix + '-amt').value = '';
+  document.getElementById(prefix + '-note').value = '';
+  const uploadText = document.getElementById(prefix + '-upload-area').querySelector('.pu-text');
+  if (uploadText) uploadText.textContent = type === 'income' ? 'Photo ya bill tap karke add karo' : 'Bill ya receipt ki photo add karo';
+  document.getElementById(type + '-overlay').classList.add('open');
+  setTimeout(() => document.getElementById(prefix + '-amt').focus(), 350);
+}
+
+function closeModal(type) {
+  document.getElementById(type + '-overlay').classList.remove('open');
+}
+
+function closeOnOverlay(e, type) {
+  if (e.target === e.currentTarget) closeModal(type);
+}
+
+function sa(id, val) {
+  document.getElementById(id).value = val;
+}
+
+// ─── Add Transaction ───
+async function addTx(type) {
+  const prefix = type === 'income' ? 'inc' : 'exp';
+  const amt = parseFloat(document.getElementById(prefix + '-amt').value);
+  if (!amt || amt <= 0) { toast('Sahi amount daalo!', 't-exp'); return; }
+  const cat = document.getElementById(prefix + '-cat').value;
+  const note = document.getElementById(prefix + '-note').value.trim();
+  const photo = pendingPhoto[prefix] || null;
+
+  const tx = {
+    id: Date.now().toString() + Math.random().toString(36).slice(2, 6),
+    type, amount: amt, category: cat,
+    note: note || cat.replace(/[^\w\s]/gi, '').trim(),
+    date: new Date().toISOString(),
+    photo
+  };
+
+  await dbPut(tx);
+  transactions.push(tx);
+  transactions.sort((a, b) => new Date(a.date) - new Date(b.date));
+  updateUI(); updateStats(); closeModal(type);
+  toast(type === 'income' ? '💰 Income add ho gaya!' : '🛒 Kharcha add ho gaya!', type === 'income' ? 't-inc' : 't-exp');
+}
+
+// ─── Delete ───
+async function deleteTx(id) {
+  if (!confirm('Ye transaction delete karein?')) return;
+  await dbDelete(id);
+  transactions = transactions.filter(t => t.id !== id);
+  updateUI(); updateStats();
+}
+
+// ─── Clear All ───
+async function clearAll() {
+  if (!confirm('SACH MEIN sab delete karein? Pehle backup lo!')) return;
+  await dbClear();
+  transactions = [];
+  updateUI(); updateStats();
+  toast('🗑️ Sab delete ho gaya!', 't-exp');
+}
+
+// ─── TABS ───
+function switchTab(name) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.getElementById('page-' + name).classList.add('active');
+  document.getElementById('tab-' + name).classList.add('active');
+  if (name === 'chart') renderCharts();
+  if (name === 'backup') updateStats();
+}
+
+// ─── CHARTS ───
+function renderCharts() {
+  renderMonthChart();
+  renderCatChart();
+}
+
+function getMonthlyData() {
+  const months = {};
+  transactions.forEach(t => {
+    const d = new Date(t.date);
+    const key = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0');
+    if (!months[key]) months[key] = { inc: 0, exp: 0 };
+    if (t.type === 'income') months[key].inc += t.amount;
+    else months[key].exp += t.amount;
+  });
+  const keys = Object.keys(months).sort().slice(-6);
+  return {
+    labels: keys.map(k => {
+      const [y, m] = k.split('-');
+      return new Date(y, m - 1).toLocaleDateString('en-IN', { month: 'short', year: '2-digit' });
+    }),
+    income: keys.map(k => months[k].inc),
+    expense: keys.map(k => months[k].exp),
+    balance: keys.map(k => months[k].inc - months[k].exp)
+  };
+}
+
+function renderMonthChart() {
+  const canvas = document.getElementById('monthChart');
+  const ctx = canvas.getContext('2d');
+  const data = getMonthlyData();
+
+  canvas.width = canvas.offsetWidth * window.devicePixelRatio || 400;
+  canvas.height = 220 * (window.devicePixelRatio || 1);
+  ctx.scale(window.devicePixelRatio || 1, window.devicePixelRatio || 1);
+
+  const W = canvas.offsetWidth || 400, H = 220;
+  const pad = { top: 20, right: 16, bottom: 40, left: 52 };
+  const chartW = W - pad.left - pad.right;
+  const chartH = H - pad.top - pad.bottom;
+
+  ctx.clearRect(0, 0, W, H);
+
+  if (!data.labels.length) {
+    ctx.fillStyle = '#5a6080';
+    ctx.font = '13px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('Transactions add karo chart dekhne ke liye', W / 2, H / 2);
+    return;
+  }
+
+  const allVals = [...data.income, ...data.expense, ...data.balance.map(Math.abs)];
+  const maxVal = Math.max(...allVals, 1);
+  const n = data.labels.length;
+  const barGroupW = chartW / n;
+  const barW = Math.min(barGroupW * 0.22, 18);
+
+  // Grid lines
+  ctx.strokeStyle = '#252a3d';
+  ctx.lineWidth = 0.5;
+  for (let i = 0; i <= 4; i++) {
+    const y = pad.top + chartH - (i / 4) * chartH;
+    ctx.beginPath(); ctx.moveTo(pad.left, y); ctx.lineTo(pad.left + chartW, y); ctx.stroke();
+    ctx.fillStyle = '#5a6080';
+    ctx.font = '9px sans-serif';
+    ctx.textAlign = 'right';
+    const val = (maxVal * i / 4);
+    ctx.fillText(val >= 1000 ? (val / 1000).toFixed(0) + 'k' : val.toFixed(0), pad.left - 4, y + 3);
+  }
+
+  data.labels.forEach((lbl, i) => {
+    const cx = pad.left + i * barGroupW + barGroupW / 2;
+    const drawBar = (val, color, offset) => {
+      if (val <= 0) return;
+      const bh = (val / maxVal) * chartH;
+      const bx = cx + offset - barW / 2;
+      const by = pad.top + chartH - bh;
+      ctx.fillStyle = color;
+      ctx.beginPath();
+      ctx.roundRect ? ctx.roundRect(bx, by, barW, bh, [3, 3, 0, 0]) : ctx.rect(bx, by, barW, bh);
+      ctx.fill();
+    };
+    drawBar(data.income[i], '#00e676', -barW - 2);
+    drawBar(data.expense[i], '#ff4d6d', 0);
+    drawBar(Math.max(data.balance[i], 0), '#7c6bff', barW + 2);
+
+    ctx.fillStyle = '#5a6080';
+    ctx.font = '9px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText(lbl, cx, H - pad.bottom + 14);
+  });
+}
+
+function renderCatChart() {
+  const canvas = document.getElementById('catChart');
+  const ctx = canvas.getContext('2d');
+
+  canvas.width = (canvas.offsetWidth || 400) * (window.devicePixelRatio || 1);
+  canvas.height = 200 * (window.devicePixelRatio || 1);
+  ctx.scale(window.devicePixelRatio || 1, window.devicePixelRatio || 1);
+
+  const W = canvas.offsetWidth || 400, H = 200;
+  ctx.clearRect(0, 0, W, H);
+
+  const catMap = {};
+  transactions.filter(t => t.type === 'expense').forEach(t => {
+    const c = t.category.replace(/[^\w\s]/gi, '').trim() || 'Other';
+    catMap[c] = (catMap[c] || 0) + t.amount;
+  });
+
+  const entries = Object.entries(catMap).sort((a, b) => b[1] - a[1]).slice(0, 6);
+  if (!entries.length) {
+    ctx.fillStyle = '#5a6080';
+    ctx.font = '13px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('Kharcha add karo chart dekhne ke liye', W / 2, H / 2);
+    return;
+  }
+
+  const colors = ['#ff4d6d', '#f59e0b', '#7c6bff', '#00e676', '#06b6d4', '#ec4899'];
+  const total = entries.reduce((s, [, v]) => s + v, 0);
+  const cx = W * 0.32, cy = H / 2, r = Math.min(cx, cy) - 12;
+
+  let angle = -Math.PI / 2;
+  entries.forEach(([, val], i) => {
+    const slice = (val / total) * Math.PI * 2;
+    ctx.beginPath();
+    ctx.moveTo(cx, cy);
+    ctx.arc(cx, cy, r, angle, angle + slice);
+    ctx.closePath();
+    ctx.fillStyle = colors[i % colors.length];
+    ctx.fill();
+    ctx.strokeStyle = '#0a0c14';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+    angle += slice;
+  });
+
+  // Legend
+  const lx = W * 0.62, ly = H * 0.1;
+  entries.forEach(([name, val], i) => {
+    const y = ly + i * 26;
+    ctx.fillStyle = colors[i % colors.length];
+    ctx.beginPath();
+    ctx.roundRect ? ctx.roundRect(lx, y + 1, 10, 10, 2) : ctx.rect(lx, y + 1, 10, 10);
+    ctx.fill();
+    ctx.fillStyle = '#eef0ff';
+    ctx.font = '10px sans-serif';
+    ctx.textAlign = 'left';
+    ctx.fillText(name.substring(0, 12), lx + 15, y + 10);
+    ctx.fillStyle = '#5a6080';
+    ctx.font = '9px sans-serif';
+    ctx.fillText(fmt(val) + ' (' + ((val / total) * 100).toFixed(0) + '%)', lx + 15, y + 21);
+  });
+}
+
+// ─── BACKUP ───
+async function downloadBackup() {
+  if (!transactions.length) { toast('Koi data nahi backup ke liye!', 't-exp'); return; }
+  toast('📥 Backup ban raha hai...', 't-gld');
+  const data = { version: 1, exported: new Date().toISOString(), count: transactions.length, transactions };
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'KharchaBook_Backup_' + new Date().toISOString().slice(0, 10) + '.json';
+  a.click();
+  URL.revokeObjectURL(url);
+  setTimeout(() => toast('✅ Backup download ho gaya! Save karo folder mein.', 't-inc'), 600);
+}
+
+function restoreBackup(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = async e => {
+    try {
+      const data = JSON.parse(e.target.result);
+      if (!data.transactions || !Array.isArray(data.transactions)) throw new Error('Invalid file');
+      if (!confirm(`${data.transactions.length} transactions restore honge. Existing data merge hoga. Continue?`)) return;
+      let added = 0;
+      for (const tx of data.transactions) {
+        const exists = transactions.find(t => t.id === tx.id);
+        if (!exists) { await dbPut(tx); added++; }
+      }
+      await loadAll();
+      toast(`✅ ${added} transactions restore ho gaye!`, 't-inc');
+    } catch {
+      toast('❌ Invalid backup file!', 't-exp');
+    }
+    event.target.value = '';
+  };
+  reader.readAsText(file);
+}
+
+// ─── PDF EXPORT ───
+async function exportPDF() {
+  if (!transactions.length) { toast('Pehle kuch transactions add karo!', 't-exp'); return; }
+  toast('📄 PDF ban raha hai...', 't-gld');
+
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+  const pw = 210, margin = 14;
+  let y = 18;
+
+  // Dark background
+  doc.setFillColor(10, 12, 20);
+  doc.rect(0, 0, pw, 297, 'F');
+
+  // Title
+  doc.setFontSize(22); doc.setFont('helvetica', 'bold');
+  doc.setTextColor(124, 107, 255);
+  doc.text('KharchaBook', margin, y);
+  doc.setFontSize(9); doc.setFont('helvetica', 'normal');
+  doc.setTextColor(90, 96, 128);
+  doc.text('Report: ' + new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'long', year: 'numeric' }), pw - margin, y, { align: 'right' });
+  y += 7;
+  doc.setDrawColor(37, 42, 61); doc.setLineWidth(0.4);
+  doc.line(margin, y, pw - margin, y); y += 8;
+
+  // Summary
+  const inc = transactions.filter(t => t.type === 'income').reduce((s, t) => s + t.amount, 0);
+  const exp = transactions.filter(t => t.type === 'expense').reduce((s, t) => s + t.amount, 0);
+  const bal = inc - exp;
+
+  doc.setFillColor(28, 32, 48);
+  doc.roundedRect(margin, y, pw - margin * 2, 26, 3, 3, 'F');
+  doc.setFontSize(8); doc.setTextColor(90, 96, 128);
+  doc.text('TOTAL INCOME', margin + 7, y + 8);
+  doc.text('TOTAL KHARCHA', margin + 68, y + 8);
+  doc.text('BAAKI PAISA', margin + 132, y + 8);
+  doc.setFontSize(12); doc.setFont('helvetica', 'bold');
+  doc.setTextColor(0, 230, 118); doc.text(fmt(inc), margin + 7, y + 20);
+  doc.setTextColor(255, 77, 109); doc.text(fmt(exp), margin + 68, y + 20);
+  doc.setTextColor(bal >= 0 ? 0 : 255, bal >= 0 ? 230 : 77, bal >= 0 ? 118 : 109);
+  doc.text((bal < 0 ? '-' : '') + fmt(Math.abs(bal)), margin + 132, y + 20);
+  y += 34;
+
+  // Monthly Chart in PDF
+  const monthData = getMonthlyData();
+  if (monthData.labels.length > 0) {
+    doc.setFontSize(9); doc.setFont('helvetica', 'bold');
+    doc.setTextColor(90, 96, 128);
+    doc.text('MONTHLY OVERVIEW (Last 6 Months)', margin, y); y += 5;
+
+    doc.setFillColor(28, 32, 48);
+    doc.roundedRect(margin, y, pw - margin * 2, 42, 3, 3, 'F');
+
+    const chartX = margin + 10, chartY = y + 6, chartW = pw - margin * 2 - 20, chartH = 30;
+    const maxV = Math.max(...monthData.income, ...monthData.expense, 1);
+    const n = monthData.labels.length;
+    const grpW = chartW / n;
+    const bw = Math.min(grpW * 0.18, 6);
+
+    monthData.labels.forEach((lbl, i) => {
+      const cx = chartX + i * grpW + grpW / 2;
+      const drawBar = (val, r, g, b, offset) => {
+        if (val <= 0) return;
+        const bh = (val / maxV) * chartH;
+        doc.setFillColor(r, g, b);
+        doc.rect(cx + offset - bw / 2, chartY + chartH - bh, bw, bh, 'F');
+      };
+      drawBar(monthData.income[i], 0, 230, 118, -bw - 1);
+      drawBar(monthData.expense[i], 255, 77, 109, 0);
+      drawBar(Math.max(monthData.balance[i], 0), 124, 107, 255, bw + 1);
+      doc.setFontSize(6); doc.setTextColor(90, 96, 128);
+      doc.text(lbl, cx, chartY + chartH + 6, { align: 'center' });
+    });
+
+    // Legend
+    const lx = margin + 4, ly2 = y + 38;
+    [[0,230,118,'Income'],[255,77,109,'Kharcha'],[124,107,255,'Baaki']].forEach(([r,g,b,lbl], i) => {
+      doc.setFillColor(r,g,b); doc.rect(lx + i*36, ly2, 4, 3, 'F');
+      doc.setFontSize(6); doc.setTextColor(90,96,128);
+      doc.text(lbl, lx + i*36 + 6, ly2 + 3);
+    });
+    y += 50;
+  }
+
+  // Transactions Table
+  doc.setFontSize(9); doc.setFont('helvetica', 'bold');
+  doc.setTextColor(90, 96, 128);
+  doc.text('ALL TRANSACTIONS', margin, y); y += 5;
+
+  doc.setFillColor(46, 50, 73);
+  doc.rect(margin, y, pw - margin * 2, 7, 'F');
+  doc.setFontSize(7); doc.setTextColor(107, 114, 128);
+  doc.text('TYPE', margin + 2, y + 5);
+  doc.text('CATEGORY', margin + 18, y + 5);
+  doc.text('NOTE', margin + 58, y + 5);
+  doc.text('DATE', margin + 118, y + 5);
+  doc.text('AMOUNT', pw - margin - 2, y + 5, { align: 'right' });
+  y += 9;
+
+  [...transactions].reverse().forEach((t, i) => {
+    if (y > 272) {
+      doc.addPage();
+      doc.setFillColor(10, 12, 20); doc.rect(0, 0, pw, 297, 'F');
+      y = 14;
+    }
+    if (i % 2 === 0) { doc.setFillColor(19, 22, 32); doc.rect(margin, y - 4, pw - margin * 2, 8, 'F'); }
+    const d = new Date(t.date);
+    const ds = d.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: '2-digit' });
+    const catClean = t.category.replace(/[\u{1F300}-\u{1FFFF}]/gu, '').replace(/[^\x20-\x7E]/g, '').trim();
+    const noteClean = (t.note || catClean).replace(/[^\x20-\x7E]/g, '').substring(0, 30);
+    doc.setFontSize(8); doc.setFont('helvetica', 'normal');
+    doc.setTextColor(t.type === 'income' ? 0 : 255, t.type === 'income' ? 200 : 77, t.type === 'income' ? 100 : 109);
+    doc.text(t.type === 'income' ? '+INC' : '-EXP', margin + 2, y + 1);
+    doc.setTextColor(190, 200, 220);
+    doc.text(catClean.substring(0, 16), margin + 18, y + 1);
+    doc.text(noteClean, margin + 58, y + 1);
+    doc.text(ds, margin + 118, y + 1);
+    doc.setTextColor(t.type === 'income' ? 0 : 255, t.type === 'income' ? 200 : 77, t.type === 'income' ? 100 : 109);
+    doc.text((t.type === 'income' ? '+' : '-') + fmt(t.amount), pw - margin - 2, y + 1, { align: 'right' });
+    if (t.photo) { doc.setTextColor(124,107,255); doc.text('📸', margin + 2, y + 6); }
+    y += 9;
+  });
+
+  // Footer
+  y += 4;
+  doc.setDrawColor(37,42,61); doc.line(margin, y, pw-margin, y); y += 6;
+  doc.setFontSize(7); doc.setTextColor(90,96,128);
+  doc.text('Generated by KharchaBook  |  ' + transactions.length + ' transactions  |  ' + new Date().toLocaleString('en-IN'), margin, y);
+
+  doc.save('KharchaBook_' + new Date().toISOString().slice(0, 10) + '.pdf');
+  setTimeout(() => toast('✅ PDF download ho gaya!', 't-gld'), 700);
+}
+
+// ─── TOAST ───
+let toastT;
+function toast(msg, cls) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.className = 'toast show ' + cls;
+  clearTimeout(toastT);
+  toastT = setTimeout(() => el.classList.remove('show'), 2800);
+}
+
+// ─── INIT ───
+openDB().then(loadAll).catch(err => {
+  console.error(err);
+  toast('❌ DB error, reload karo', 't-exp');
+});
+</script>
+</body>
+</html>
